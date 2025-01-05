@@ -1,6 +1,6 @@
 "use server";
 
-import { createUser } from "@/entities/user/server";
+import { createUser, sessionService } from "@/entities/user/server";
 import { redirect } from "next/navigation";
 
 import { z } from "zod";
@@ -41,10 +41,19 @@ export const signUpAction = async (
   const createUserResult = await createUser(result.data);
 
   if (createUserResult.type === "right") {
+    await sessionService.addSession(createUserResult.value);
+
     redirect("/");
   }
 
+  const errors = {
+    "user-login-exists": "Пользователь с таким login существует",
+  }[createUserResult.error];
+
   return {
     formData,
+    errors: {
+      _errors: errors,
+    },
   };
 };

@@ -1,6 +1,6 @@
 "use server";
 
-import { verifyUserPassword } from "@/entities/user/server";
+import { sessionService, verifyUserPassword } from "@/entities/user/server";
 
 import { redirect } from "next/navigation";
 
@@ -42,10 +42,19 @@ export const signInAction = async (
   const verifyUserResult = await verifyUserPassword(result.data);
 
   if (verifyUserResult.type === "right") {
+    await sessionService.addSession(verifyUserResult.value);
+
     redirect("/");
   }
 
+  const errors = {
+    "wron-login-or-password": "Неверный логин или пароль",
+  }[verifyUserResult.error];
+
   return {
     formData,
+    errors: {
+      _errors: errors,
+    },
   };
 };
