@@ -1,33 +1,29 @@
 import { GameId } from "@/kernel/ids";
-import { GameLayout } from "../ui/layout";
-import { GameDomain } from "@/entities/game";
-import { GamePlayers } from "../ui/players";
-import { GameStatus } from "../ui/status";
-import { GameField } from "../ui/field";
+import { GameClient } from "./game-client";
+import { getGameById, startGame } from "@/entities/game/server";
+import { getCurrentUser } from "@/entities/user/server";
+import { gameEvents } from "../services/game-events";
+import { redirect } from "next/navigation";
 
 export async function Game({ gameId }: { gameId: GameId }) {
-  const game: GameDomain.GameEntity = {
-    id: "1",
-    players: [
-      {
-        id: "1",
-        login: "Test",
-        rating: 1000,
-      },
-      {
-        id: "2",
-        login: "Test2",
-        rating: 800,
-      },
-    ],
-    status: "inProgress",
-    field: [null, null, null, "X", "O", null, null, "X", null],
-  };
-  return (
-    <GameLayout
-      players={<GamePlayers game={game} />}
-      status={<GameStatus game={game} />}
-      field={<GameField game={game} />}
-    />
-  );
+  const user = await getCurrentUser();
+
+  let game = await getGameById(gameId);
+
+  console.log(game);
+
+  if (!game) {
+    redirect("/");
+  }
+
+  if (user) {
+    const startGameResult = await startGame(gameId, user);
+
+    if (startGameResult.type === "right") {
+      game = startGameResult.value;
+      gameEvents.emit(startGameResult.value);
+    }
+  }
+
+  return <GameClient defaultGame={game} />;
 }
