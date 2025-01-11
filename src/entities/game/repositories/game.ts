@@ -1,8 +1,14 @@
 import { prisma } from "@/shared/lib/db";
-import { GameEntity, GameIdleEntity, GameOverEntity } from "../domain";
+import {
+  GameEntity,
+  GameIdleEntity,
+  GameOverEntity,
+  PlayerEntity,
+} from "../domain";
 import { Game, GameStatus, Prisma, User } from "@prisma/client";
 import { z } from "zod";
 import { removePassword } from "@/shared/lib/password";
+import { GameId } from "@/kernel/ids";
 
 const fieldSchema = z.array(z.union([z.string(), z.null()]));
 
@@ -15,6 +21,40 @@ async function gamesList(where?: Prisma.GameWhereInput): Promise<GameEntity[]> {
   });
 
   return games.map(dbGameToGameEntity);
+}
+
+async function startGame(gameId: GameId, player: PlayerEntity) {
+  return dbGameToGameEntity(
+    await prisma.game.update({
+      where: { id: gameId },
+      data: {
+        players: {
+          connect: {
+            id: player.id,
+          },
+        },
+        status: "inProgress",
+      },
+      include: {
+        winner: true,
+        players: true,
+      },
+    }),
+  );
+}
+
+async function getGame(where?: Prisma.GameWhereInput) {
+  const game = await prisma.game.findFirst({
+    where,
+    include: {
+      winner: true,
+      players: true,
+    },
+  });
+  if (game) {
+    return dbGameToGameEntity(game);
+  }
+  return undefined;
 }
 
 async function createGame(game: GameIdleEntity): Promise<GameEntity> {
@@ -85,4 +125,6 @@ function dbGameToGameEntity(
 export const gameRepository = {
   gamesList,
   createGame,
+  getGame,
+  startGame,
 };
